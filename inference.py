@@ -110,6 +110,7 @@ def datagen(frames, mels):
 
 	if args.box[0] == -1:
 		if not args.static:
+			print("Run face detection.")
 			face_det_results = face_detect(frames) # BGR2RGB for CNN face detection
 		else:
 			face_det_results = face_detect([frames[0]])
@@ -117,7 +118,7 @@ def datagen(frames, mels):
 		print('Using the specified bounding box instead of face detection...')
 		y1, y2, x1, x2 = args.box
 		face_det_results = [[f[y1: y2, x1:x2], (y1, y2, x1, x2)] for f in frames]
-
+	print("End face detection")
 	for i, m in enumerate(mels):
 		idx = 0 if args.static else i%len(frames)
 		frame_to_save = frames[idx].copy()
@@ -246,8 +247,7 @@ def main():
 	batch_size = args.wav2lip_batch_size
 	gen = datagen(full_frames.copy(), mel_chunks)
 
-	for i, (img_batch, mel_batch, frames, coords) in enumerate(tqdm(gen, 
-											total=int(np.ceil(float(len(mel_chunks))/batch_size)))):
+	for i, (img_batch, mel_batch, frames, coords) in enumerate(tqdm(gen, total=int(np.floor(float(len(mel_chunks))/batch_size)))):
 		if i == 0:
 			model = load_model(args.checkpoint_path)
 			print ("Model loaded")
