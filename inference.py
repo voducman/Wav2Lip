@@ -86,10 +86,13 @@ def face_detect(images):
 
 	results = []
 	pady1, pady2, padx1, padx2 = args.pads
-	for rect, image in zip(predictions, images):
+	for i, (rect, image) in enumerate(zip(predictions, images)):
 		if rect is None:
-			cv2.imwrite('temp/faulty_frame.jpg', image) # check this frame where the face was not detected.
-			raise ValueError('Face not detected! Ensure the video contains a face in all the frames.')
+			# cv2.imwrite('temp/faulty_frame.jpg', image) # check this frame where the face was not detected.
+			# raise ValueError('Face not detected! Ensure the video contains a face in all the frames.')
+			predictions.pop(i)
+			images.pop(i)
+			continue
 
 		y1 = max(0, rect[1] - pady1)
 		y2 = min(image.shape[0], rect[3] + pady2)
@@ -154,9 +157,11 @@ def datagen(frames, mels):
 
 		yield img_batch, mel_batch, frame_batch, coords_batch
 
+
 mel_step_size = 16
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Using {} for inference.'.format(device))
+
 
 def _load(checkpoint_path):
 	if device == 'cuda':
@@ -165,6 +170,7 @@ def _load(checkpoint_path):
 		checkpoint = torch.load(checkpoint_path,
 								map_location=lambda storage, loc: storage)
 	return checkpoint
+
 
 def load_model(path):
 	model = Wav2Lip()
@@ -247,7 +253,7 @@ def main():
 	batch_size = args.wav2lip_batch_size
 	gen = datagen(full_frames.copy(), mel_chunks)
 
-	for i, (img_batch, mel_batch, frames, coords) in enumerate(tqdm(gen, total=int(np.floor(float(len(mel_chunks))/batch_size)))):
+	for i, (img_batch, mel_batch, frames, coords) in enumerate(tqdm(gen, total=int(np.ceil(float(len(mel_chunks))/batch_size)))):
 		if i == 0:
 			model = load_model(args.checkpoint_path)
 			print ("Model loaded")
