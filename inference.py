@@ -85,13 +85,13 @@ def face_detect(images):
 		break
 
 	results = []
+	remove_idxs = []
 	pady1, pady2, padx1, padx2 = args.pads
 	for i, (rect, image) in enumerate(zip(predictions, images)):
 		if rect is None:
 			# cv2.imwrite('temp/faulty_frame.jpg', image) # check this frame where the face was not detected.
 			# raise ValueError('Face not detected! Ensure the video contains a face in all the frames.')
-			predictions.pop(i)
-			images.pop(i)
+			remove_idxs.append(i)
 			continue
 
 		y1 = max(0, rect[1] - pady1)
@@ -102,26 +102,30 @@ def face_detect(images):
 		results.append([x1, y1, x2, y2])
 
 	boxes = np.array(results)
+
 	if not args.nosmooth: boxes = get_smoothened_boxes(boxes, T=5)
+	for idx in remove_idxs[::-1]:
+		images.pop(idx)
 	results = [[image[y1: y2, x1:x2], (y1, y2, x1, x2)] for image, (x1, y1, x2, y2) in zip(images, boxes)]
 
 	del detector
-	return results 
+	return results, remove_idxs
 
 def datagen(frames, mels):
 	img_batch, mel_batch, frame_batch, coords_batch = [], [], [], []
 
 	if args.box[0] == -1:
 		if not args.static:
-			print("Run face detection.")
-			face_det_results = face_detect(frames) # BGR2RGB for CNN face detection
+			face_det_results, remove_idxs = face_detect(frames) # BGR2RGB for CNN face detection
 		else:
 			face_det_results = face_detect([frames[0]])
 	else:
 		print('Using the specified bounding box instead of face detection...')
 		y1, y2, x1, x2 = args.box
 		face_det_results = [[f[y1: y2, x1:x2], (y1, y2, x1, x2)] for f in frames]
-	print("End face detection")
+
+	for idx in remove_idxs[::-1]:
+		mels.pop(idx)
 	for i, m in enumerate(mels):
 		idx = 0 if args.static else i%len(frames)
 		frame_to_save = frames[idx].copy()
@@ -246,14 +250,15 @@ def main():
 		mel_chunks.append(mel[:, start_idx : start_idx + mel_step_size])
 		i += 1
 
-	print("Length of mel chunks: {}".format(len(mel_chunks)))
+	# mel has a shape: (80, xxxx) ex: (80, 4001)
+	print("Length of mel chunks: {}, shape mel: {}".format(len(mel_chunks), mel.shape))
 
 	full_frames = full_frames[:len(mel_chunks)]
 
 	batch_size = args.wav2lip_batch_size
 	gen = datagen(full_frames.copy(), mel_chunks)
 
-	for i, (img_batch, mel_batch, frames, coords) in enumerate(tqdm(gen, total=int(np.ceil(float(len(mel_chunks))/batch_size)))):
+	for i, (img_batch, mel_batch, frames, coords) in enumerate(tqdm(gen, total=int(np.floor(float(len(mel_chunks))/batch_size)))):
 		if i == 0:
 			model = load_model(args.checkpoint_path)
 			print ("Model loaded")
