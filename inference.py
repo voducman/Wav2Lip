@@ -54,8 +54,11 @@ parser.add_argument('--nosmooth', default=False, action='store_true',
 args = parser.parse_args()
 args.img_size = 96
 
-if os.path.isfile(args.face) and args.face.split('.')[1] in ['jpg', 'png', 'jpeg']:
-	args.static = True
+try:
+	if os.path.isfile(args.face) and args.face.split('.')[1] in ['jpg', 'png', 'jpeg']:
+		args.static = True
+except:
+	pass
 
 def get_smoothened_boxes(boxes, T):
 	for i in range(len(boxes)):
@@ -191,12 +194,12 @@ def load_model(path):
 	return model.eval()
 
 def main(face_path=None):
-	if not os.path.isfile(args.face) and face_path is None:
-		raise ValueError('--face argument must be a valid path to video/image file')
 
-	if not os.path.isfile(args.face):
+	if face_path is not None:
 		args.face = face_path
 
+	if not os.path.isfile(args.face) and face_path is None:
+		raise ValueError('--face argument must be a valid path to video/image file')
 	elif args.face.split('.')[1] in ['jpg', 'png', 'jpeg']:
 		full_frames = [cv2.imread(args.face)]
 		fps = args.fps
@@ -299,6 +302,7 @@ def main(face_path=None):
 if __name__ == '__main__':
 	video_dir = "/u01/manvd1/lipsync/source_videos/sample_1/"
 	video_paths = glob(video_dir + "*.mp4")
+	print(video_paths)
 	for path in video_paths:
 		start_time = time.time()
 		main(path)
