@@ -297,7 +297,7 @@ def main(face_path=None):
 
 
 if __name__ == '__main__':
-	video_dir = "u01/manvd1/lipsync/source_videos/sample_1/"
+	video_dir = "/u01/manvd1/lipsync/source_videos/sample_1/"
 	video_paths = glob(video_dir + "*.mp4")
 	for path in video_paths:
 		start_time = time.time()
