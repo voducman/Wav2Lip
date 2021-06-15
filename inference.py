@@ -1,5 +1,6 @@
 from os import listdir, path
 import numpy as np
+import time
 import scipy, cv2, os, sys, argparse, audio
 import json, subprocess, random, string
 from tqdm import tqdm
@@ -113,7 +114,7 @@ def face_detect(images):
 
 def datagen(frames, mels):
 	img_batch, mel_batch, frame_batch, coords_batch = [], [], [], []
-
+	det_start = time.time()
 	if args.box[0] == -1:
 		if not args.static:
 			face_det_results, remove_idxs = face_detect(frames) # BGR2RGB for CNN face detection
@@ -123,7 +124,7 @@ def datagen(frames, mels):
 		print('Using the specified bounding box instead of face detection...')
 		y1, y2, x1, x2 = args.box
 		face_det_results = [[f[y1: y2, x1:x2], (y1, y2, x1, x2)] for f in frames]
-
+	print("Total Face detection time: {} seconds".format(time.time() - det_start))
 	for idx in remove_idxs[::-1]:
 		mels.pop(idx)
 	for i, m in enumerate(mels):
@@ -189,9 +190,12 @@ def load_model(path):
 	model = model.to(device)
 	return model.eval()
 
-def main():
-	if not os.path.isfile(args.face):
+def main(face_path=None):
+	if not os.path.isfile(args.face) and face_path is None:
 		raise ValueError('--face argument must be a valid path to video/image file')
+
+	if not os.path.isfile(args.face):
+		args.face = face_path
 
 	elif args.face.split('.')[1] in ['jpg', 'png', 'jpeg']:
 		full_frames = [cv2.imread(args.face)]
@@ -251,7 +255,7 @@ def main():
 		i += 1
 
 	# mel has a shape: (80, xxxx) ex: (80, 4001)
-	print("Length of mel chunks: {}, shape mel: {}".format(len(mel_chunks), mel.shape))
+	print("Length of mel chunks: {}, shape mel: {}, frames length: {}".format(len(mel_chunks), mel.shape, len(full_frames)))
 
 	full_frames = full_frames[:len(mel_chunks)]
 
@@ -283,9 +287,19 @@ def main():
 			out.write(f)
 
 	out.release()
-
+	# custom code
+	video_name = os.path.basename(face_path).replace(".mp4", "")
+	audio_name = os.path.basename(args.audio).replace(".mp3", "")
+	out_file_name = f'{video_name}_{audio_name}.mp4'
+	args.outfile = out_file_name
 	command = 'ffmpeg -y -i {} -i {} -strict -2 -q:v 1 {}'.format(args.audio, 'temp/result.avi', args.outfile)
 	subprocess.call(command, shell=platform.system() != 'Windows')
 
+
 if __name__ == '__main__':
-	main()
+	video_dir = "u01/manvd1/lipsync/source_videos/sample_1/"
+	video_paths = glob(video_dir + "*.mp4")
+	for path in video_paths:
+		start_time = time.time()
+		main(path)
+		print("Total running time: {} seconds".format(time.time() - start_time))
