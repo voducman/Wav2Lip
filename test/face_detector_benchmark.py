@@ -3,6 +3,7 @@ import time
 import cv2,argparse
 from tqdm import tqdm
 import torch
+from facenet_pytorch import MTCNN
 import face_detection
 from face_detection.api import LandmarksType
 
@@ -12,13 +13,20 @@ parser = argparse.ArgumentParser(description='Inference code to benchmark face d
 parser.add_argument('--batch_size', type=int, help='Batch size for face detector.', default=32, required=False)
 parser.add_argument('--image', type=str, help="image to conduct face detection.", default="test/person.jpg", required=False)
 parser.add_argument('--num_images', type=int, help="", default=1000, required=True)
+parser.add_argument('--method', type=str, help="MTCNN or S3FD", default="mtcnn", required=False)
 
 if __name__ == "__main__":
     args = parser.parse_args()
     if type(args.batch_size) is not int or args.batch_size < 1:
         raise ValueError("Batch size was required is a integer type.")
+    if args.method not in ['mtcnn', 's3fd']:
+        raise ValueError("Method invalid.")
+
     load_start = time.time()
-    detector = face_detection.FaceAlignment(LandmarksType._2D, flip_input=False, device=device)
+    if args.method == 's3fd':
+        detector = face_detection.FaceAlignment(LandmarksType._2D, flip_input=False, device=device)
+    else:
+        detector = MTCNN()
     load_end = time.time()
     person = cv2.imread(args.image)
 
@@ -29,7 +37,10 @@ if __name__ == "__main__":
         else:
             batch_image = [person for _ in range(args.batch_size)]
 
-        predictions = detector.get_detections_for_batch(np.asarray(batch_image))
+        if args.method == 's3fd':
+            predictions = detector.get_detections_for_batch(np.asarray(batch_image))
+        else:
+            predictions = detector.detect(np.asarray(batch_image))
     det_end = time.time()
 
     print("Load model time: {} s".format(load_end-load_start))
