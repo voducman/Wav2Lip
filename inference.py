@@ -26,7 +26,7 @@ parser.add_argument('--static', type=bool,
 parser.add_argument('--fps', type=float, help='Can be specified only if input is a static image (default: 25)', 
 					default=25., required=False)
 
-parser.add_argument('--pads', nargs='+', type=int, default=[0, 10, 0, 0], 
+parser.add_argument('--pads', nargs='+', type=int, default=[5, 30, 5, 5],
 					help='Padding (top, bottom, left, right). Please adjust to include chin at least')
 
 parser.add_argument('--face_det_batch_size', type=int, 
