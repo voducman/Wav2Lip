@@ -125,6 +125,8 @@ def face_detect_mtcnn(images):
 			for i in tqdm(range(0, len(images), batch_size)):
 				dets = detector.detect(np.array(images[i:i + batch_size]))
 				bbox = dets[0][0]
+				if bbox is not None:
+					bbox = bbox.astype(np.int32)
 				predictions.extend(bbox)
 		except RuntimeError:
 			if batch_size == 1:
