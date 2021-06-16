@@ -8,7 +8,7 @@ sys.path.append(os.getcwd())
 import face_detection
 from face_detection.api import LandmarksType
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 parser = argparse.ArgumentParser(description='Inference code to benchmark face detector')
 parser.add_argument('--batch_size', type=int, help='Batch size for face detector.', default=32, required=False)
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     if args.method == 's3fd':
         detector = face_detection.FaceAlignment(LandmarksType._2D, flip_input=False, device=device)
     else:
-        detector = MTCNN()
+        detector = MTCNN(device=torch.device(device))
     load_end = time.time()
 
     det_start = time.time()
