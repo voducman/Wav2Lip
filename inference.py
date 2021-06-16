@@ -123,11 +123,17 @@ def face_detect_mtcnn(images):
 		predictions = []
 		try:
 			for i in tqdm(range(0, len(images), batch_size)):
-				dets = detector.detect(np.array(images[i:i + batch_size]))
-				bbox = dets[0][0]
-				if bbox is not None:
-					bbox = bbox.astype(np.int32)
-				predictions.extend(bbox)
+				batch_bgr = images[i:i + batch_size]
+				batch_rgb = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in batch_bgr]
+				bboxes = detector.detect(np.array(batch_rgb))[0]
+				preds = []
+				for bbox_ in bboxes:
+					if bbox_ is None:
+						box = None
+					else:
+						box = bbox_[0].astype(np.int32)
+					preds.append(box)
+				predictions.extend(preds)
 		except RuntimeError:
 			if batch_size == 1:
 				raise RuntimeError('Image too big to run face detection on GPU. Please use the --resize_factor argument')
@@ -168,7 +174,6 @@ def datagen(frames, mels):
 	det_start = time.time()
 	if args.box[0] == -1:
 		if not args.static:
-			frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in frames] # BGR2RGB for CNN face detection
 			face_det_results, remove_idxs = face_detect_mtcnn(frames)
 		else:
 			face_det_results = face_detect([frames[0]])
@@ -341,11 +346,12 @@ def main(face_path=None):
 	out.release()
 	# custom code
 	video_name = os.path.basename(face_path).replace(".mp4", "")
-	audio_name = os.path.basename(args.audio).replace(".mp3", "")
+	audio_name = os.path.basename(args.audio).replace(".wav", "")
 	out_file_name = f'{video_name}_{audio_name}.mp4'
 	args.outfile = out_file_name
 	command = 'ffmpeg -y -i {} -i {} -strict -2 -q:v 1 {}'.format(args.audio, 'temp/result.avi', "results/" + args.outfile)
 	subprocess.call(command, shell=platform.system() != 'Windows')
+	return len(full_frames)
 
 
 if __name__ == '__main__':
@@ -354,5 +360,5 @@ if __name__ == '__main__':
 	print(video_paths)
 	for path in video_paths:
 		start_time = time.time()
-		main(path)
-		print("Total running time: {} seconds".format(time.time() - start_time))
+		num_frames = main(path)
+		print("Total running time: {} seconds -- FPS: {}".format(time.time() - start_time, int(num_frames/(time.time() - start_time))))
