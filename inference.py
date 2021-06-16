@@ -342,7 +342,7 @@ def main(face_path=None):
 	audio_name = os.path.basename(args.audio).replace(".mp3", "")
 	out_file_name = f'{video_name}_{audio_name}.mp4'
 	args.outfile = out_file_name
-	command = 'ffmpeg -y -i {} -i {} -strict -2 -q:v 1 {}'.format(args.audio, 'temp/result.avi', args.outfile)
+	command = 'ffmpeg -y -i {} -i {} -strict -2 -q:v 1 {}'.format(args.audio, 'temp/result.avi', "results/" + args.outfile)
 	subprocess.call(command, shell=platform.system() != 'Windows')
 
 
