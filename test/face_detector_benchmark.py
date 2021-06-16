@@ -3,11 +3,8 @@ import time
 import cv2, argparse, os, sys
 from tqdm import tqdm
 import torch
-<<<<<<< HEAD
 from facenet_pytorch import MTCNN
-=======
 sys.path.append(os.getcwd())
->>>>>>> e0abb45334332f2d484258bbe428507ce9d37712
 import face_detection
 from face_detection.api import LandmarksType
 
