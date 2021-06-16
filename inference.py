@@ -5,6 +5,7 @@ import scipy, cv2, os, sys, argparse, audio
 import json, subprocess, random, string
 from tqdm import tqdm
 from glob import glob
+from facenet_pytorch import MTCNN
 import torch, face_detection
 from models import Wav2Lip
 import platform
@@ -113,12 +114,60 @@ def face_detect(images):
 	del detector
 	return results, remove_idxs
 
+
+def face_detect_mtcnn(images):
+	detector = MTCNN(device=torch.device(device))
+	batch_size = args.face_det_batch_size
+
+	while 1:
+		predictions = []
+		try:
+			for i in tqdm(range(0, len(images), batch_size)):
+				dets = detector.detect(np.array(images[i:i + batch_size]))
+				bbox = dets[0][0]
+				predictions.extend(bbox)
+		except RuntimeError:
+			if batch_size == 1:
+				raise RuntimeError('Image too big to run face detection on GPU. Please use the --resize_factor argument')
+			batch_size //= 2
+			print('Recovering from OOM error; New batch size: {}'.format(batch_size))
+			continue
+		break
+
+	results = []
+	remove_idxs = []
+	pady1, pady2, padx1, padx2 = args.pads
+	for i, (rect, image) in enumerate(zip(predictions, images)):
+		if rect is None:
+			# cv2.imwrite('temp/faulty_frame.jpg', image) # check this frame where the face was not detected.
+			# raise ValueError('Face not detected! Ensure the video contains a face in all the frames.')
+			remove_idxs.append(i)
+			continue
+
+		y1 = max(0, rect[1] - pady1)
+		y2 = min(image.shape[0], rect[3] + pady2)
+		x1 = max(0, rect[0] - padx1)
+		x2 = min(image.shape[1], rect[2] + padx2)
+
+		results.append([x1, y1, x2, y2])
+
+	boxes = np.array(results)
+
+	if not args.nosmooth: boxes = get_smoothened_boxes(boxes, T=5)
+	for idx in remove_idxs[::-1]:
+		images.pop(idx)
+	results = [[image[y1: y2, x1:x2], (y1, y2, x1, x2)] for image, (x1, y1, x2, y2) in zip(images, boxes)]
+
+	del detector
+	return results, remove_idxs
+
 def datagen(frames, mels):
 	img_batch, mel_batch, frame_batch, coords_batch = [], [], [], []
 	det_start = time.time()
 	if args.box[0] == -1:
 		if not args.static:
-			face_det_results, remove_idxs = face_detect(frames) # BGR2RGB for CNN face detection
+			frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in frames] # BGR2RGB for CNN face detection
+			face_det_results, remove_idxs = face_detect_mtcnn(frames)
 		else:
 			face_det_results = face_detect([frames[0]])
 	else:
@@ -165,7 +214,7 @@ def datagen(frames, mels):
 
 
 mel_step_size = 16
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 print('Using {} for inference.'.format(device))
 
 
