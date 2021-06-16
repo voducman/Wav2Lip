@@ -32,9 +32,13 @@ args = parser.parse_args()
 fa = [face_detection.FaceAlignment(face_detection.LandmarksType._2D, flip_input=False, 
 									device='cuda:{}'.format(id)) for id in range(args.ngpu)]
 
+# extract audio from video file
 template = 'ffmpeg -loglevel panic -y -i {} -strict -2 {}'
 # template2 = 'ffmpeg -hide_banner -loglevel panic -threads 1 -y -i {} -async 1 -ac 1 -vn -acodec pcm_s16le -ar 16000 {}'
 
+# Dùng model face detection chạy inference ra ảnh các face từ video (bỏ qua ảnh không detect ra face)
+# --> lưu ảnh này vào thư mục tương ứng như thư mục video nhưng ở folder preprocess.
+# using OpenCV to capture frames
 def process_video_file(vfile, args, gpu_id):
 	video_stream = cv2.VideoCapture(vfile)
 	
@@ -66,6 +70,8 @@ def process_video_file(vfile, args, gpu_id):
 			x1, y1, x2, y2 = f
 			cv2.imwrite(path.join(fulldir, '{}.jpg'.format(i)), fb[j][y1:y2, x1:x2])
 
+# extract audio from video file and save to the same folder as extracted images
+# using ffmpeg
 def process_audio_file(vfile, args):
 	vidname = os.path.basename(vfile).split('.')[0]
 	dirname = vfile.split('/')[-2]

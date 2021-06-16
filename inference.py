@@ -70,9 +70,7 @@ def get_smoothened_boxes(boxes, T):
 	return boxes
 
 def face_detect(images):
-	detector = face_detection.FaceAlignment(face_detection.LandmarksType._2D, 
-											flip_input=False, device=device)
-
+	detector = face_detection.FaceAlignment(face_detection.LandmarksType._2D, flip_input=False, device=device)
 	batch_size = args.face_det_batch_size
 	
 	while 1:

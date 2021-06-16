@@ -15,5 +15,4 @@ evaluation/test_filelists/lr*.txt
 *.webm
 *.mp3
 checkpoints
-.idea
-
+.idea/*
